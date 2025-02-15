@@ -1,6 +1,18 @@
 <template>
   <div>
     <h2>Игровое поле</h2>
+
+    <div style="margin-bottom: 10px;">
+      <div v-if="!gameOver">
+        <span v-if="currentPlayer === 1" style="color: blue;">Ход 1 игрока</span>
+        <span v-else style="color: red;">Ход 2 игрока</span>
+      </div>
+      <div v-else style="color: green;">
+        <span v-if="winner === 0">Ничья!</span>
+        <span v-else>Победил {{ winner }} игрок</span>
+      </div>
+    </div>
+
     <table>
       <tr v-for="(row, rowIndex) in board" :key="rowIndex">
         <td
@@ -43,6 +55,8 @@ export default {
     return {
       board: [],
       currentPlayer: 1,
+      gameOver: false,
+      winner: null,
       socket: null,
     };
   },
@@ -60,22 +74,22 @@ export default {
     },
     openCell(row, col) {
       if (!this.board[row][col] || this.board[row][col].opened) return;
+      if (this.gameOver) return; // если игра закончена, не обрабатываем ход
       console.log("GameBoard.vue: Emitting makeMove for cell", row, col);
       this.socket.emit("makeMove", { row, col });
     },
   },
   watch: {
-    // Добавляем watcher, который будет реагировать на изменения пропсов N и M
     N(newVal, oldVal) {
       if (newVal !== oldVal) {
         console.log(`N changed from ${oldVal} to ${newVal}`);
-        this.startGame(); // Перезапускаем игру с новыми значениями
+        this.startGame();
       }
     },
     M(newVal, oldVal) {
       if (newVal !== oldVal) {
         console.log(`M changed from ${oldVal} to ${newVal}`);
-        this.startGame(); // Перезапускаем игру с новыми значениями
+        this.startGame();
       }
     },
   },
@@ -83,7 +97,7 @@ export default {
     this.socket = io("http://localhost:3000");
     this.socket.on("connect", () => {
       console.log("GameBoard.vue: Socket connected");
-      this.startGame(); // При первом подключении запускаем игру
+      this.startGame();
     });
     this.socket.on("connect_error", (error) => {
       console.log("GameBoard.vue: Error connecting to WebSocket:", error);
@@ -92,6 +106,8 @@ export default {
       console.log("GameBoard.vue: Received game state:", gameState);
       this.board = gameState.board;
       this.currentPlayer = gameState.currentPlayer;
+      this.gameOver = gameState.gameOver;
+      this.winner = gameState.winner;
     });
   },
 };
